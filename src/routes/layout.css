@@ -1,0 +1,210 @@
+@import 'tailwindcss';
+@plugin '@tailwindcss/forms';
+@plugin '@tailwindcss/typography';
+
+@theme {
+	--font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+	--font-display: 'Space Grotesk', sans-serif;
+
+	--color-background: #fcfbfa;
+	--color-surface: #ffffff;
+	--color-surface-dim: #f4f1ea;
+	--color-surface-container-lowest: rgba(255, 255, 255, 0.75);
+	--color-surface-container-low: rgba(245, 243, 238, 0.85);
+	--color-surface-container-high: rgba(230, 226, 217, 0.95);
+
+	--color-primary: #111111;
+	--color-on-primary: #ffffff;
+	--color-secondary: #57534e;
+	--color-on-surface: #1c1917;
+	--color-on-surface-variant: #78716c;
+	--color-outline-variant: rgba(0, 0, 0, 0.07);
+	--color-outline: rgba(0, 0, 0, 0.18);
+
+	--color-error: #991b1b;
+	--color-error-container: #fee2e2;
+	--color-on-error-container: #7f1d1d;
+}
+
+html,
+body {
+	background-color: var(--color-background);
+	color: var(--color-on-surface);
+	font-family: var(--font-sans);
+	min-height: 100vh;
+	margin: 0;
+}
+
+/* --- Layout Utilities --- */
+@utility px-gutter {
+	padding-left: max(1.5rem, 5vw);
+	padding-right: max(1.5rem, 5vw);
+}
+
+@utility py-xl {
+	padding-top: 3.5rem;
+	padding-bottom: 3.5rem;
+}
+
+@utility p-xl {
+	padding: 2.5rem;
+}
+
+@utility p-lg {
+	padding: 2rem;
+}
+
+@utility mb-xl {
+	margin-bottom: 2.5rem;
+}
+
+@utility mb-xs {
+	margin-bottom: 0.5rem;
+}
+
+@utility mb-md {
+	margin-bottom: 1.5rem;
+}
+
+@utility gap-xs {
+	gap: 0.375rem;
+}
+
+@utility gap-md {
+	gap: 1rem;
+}
+
+@utility gap-sm {
+	gap: 0.5rem;
+}
+
+@utility font-headline-lg {
+	font-family: var(--font-display);
+	font-weight: 700;
+	letter-spacing: -0.02em;
+}
+
+@utility text-headline-lg {
+	font-size: 2rem;
+	line-height: 2.5rem;
+	@media (min-width: 768px) {
+		font-size: 2.25rem;
+		line-height: 2.75rem;
+	}
+}
+
+@utility font-body-md {
+	font-family: var(--font-sans);
+	font-weight: 400;
+}
+
+@utility text-body-md {
+	font-size: 0.9375rem;
+	line-height: 1.5rem;
+}
+
+@utility font-label-md {
+	font-family: var(--font-sans);
+	font-weight: 600;
+	letter-spacing: 0.05em;
+}
+
+@utility text-label-md {
+	font-size: 0.75rem;
+	line-height: 1rem;
+}
+
+@utility font-headline-md {
+	font-family: var(--font-display);
+	font-weight: 600;
+}
+
+@utility text-headline-md {
+	font-size: 1.25rem;
+	line-height: 1.75rem;
+}
+
+@utility text-body-lg {
+	font-size: 1.0625rem;
+	line-height: 1.625rem;
+}
+
+@utility space-y-md {
+	& > :not([hidden]) ~ :not([hidden]) {
+		margin-top: 1.25rem;
+	}
+}
+
+/* Ambient glow blobs - warm cream and soft grey minimal aesthetic */
+.glow-blob {
+	position: absolute;
+	width: 600px;
+	height: 600px;
+	border-radius: 50%;
+	background: radial-gradient(
+		circle,
+		rgba(230, 220, 200, 0.45) 0%,
+		rgba(240, 235, 225, 0.15) 50%,
+		rgba(0, 0, 0, 0) 100%
+	);
+	filter: blur(100px);
+	z-index: 0;
+	pointer-events: none;
+	animation: float 22s infinite ease-in-out alternate;
+}
+
+.glow-blob-2 {
+	position: absolute;
+	width: 500px;
+	height: 500px;
+	border-radius: 50%;
+	background: radial-gradient(
+		circle,
+		rgba(120, 115, 110, 0.08) 0%,
+		rgba(220, 215, 205, 0.03) 50%,
+		rgba(0, 0, 0, 0) 100%
+	);
+	filter: blur(80px);
+	z-index: 0;
+	pointer-events: none;
+	animation: float-reverse 26s infinite ease-in-out alternate;
+}
+
+@keyframes float {
+	0% {
+		transform: translate(-5%, -10%) scale(1);
+	}
+	100% {
+		transform: translate(15%, 20%) scale(1.05);
+	}
+}
+
+@keyframes float-reverse {
+	0% {
+		transform: translate(10%, 15%) scale(1.05);
+	}
+	100% {
+		transform: translate(-10%, -15%) scale(0.95);
+	}
+}
+
+/* Glass card styling for white/cream mode */
+.glass-card {
+	backdrop-filter: blur(20px) saturate(110%);
+	-webkit-backdrop-filter: blur(20px) saturate(110%);
+	background-color: var(--color-surface-container-lowest);
+	border: 1px solid var(--color-outline-variant);
+	box-shadow:
+		0 4px 6px -1px rgba(0, 0, 0, 0.02),
+		0 10px 30px -10px rgba(27, 25, 23, 0.05),
+		0 20px 40px -15px rgba(27, 25, 23, 0.03);
+	transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+	border-color: rgba(0, 0, 0, 0.15);
+	box-shadow:
+		0 6px 10px -1px rgba(0, 0, 0, 0.03),
+		0 15px 40px -10px rgba(27, 25, 23, 0.08),
+		0 25px 50px -12px rgba(27, 25, 23, 0.05);
+}

@@ -42,6 +42,8 @@
 		}
 	};
 
+	import { authState } from '$lib/auth.svelte';
+
 	/**
 	 * @param {import('firebase/auth').User} firebaseUser
 	 */
@@ -58,7 +60,10 @@
 					firebase_uid: firebaseUser.uid
 				})
 			});
-			if (!response.ok) {
+			if (response.ok) {
+				const userProfile = await response.json();
+				authState.profile = userProfile;
+			} else {
 				console.error('Failed to sync user with backend:', await response.text());
 			}
 		} catch (err) {

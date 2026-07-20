@@ -1,0 +1,61 @@
+Proposal: Unified orders Table for Order & Sales Ledger
+
+Prepared for: Business Ledger App
+Subject: Replace separate orders / sales tables with a single orders table driven by a status column
+Author: Engineering
+
+
+1. Problem Statement
+
+The current design uses two tables: orders (active/pending) and sales (completed/delivered). When an order is delivered, a background transaction copies the row into sales and deletes it from orders.
+
+This works, but creates ongoing costs:
+
+
+Duplicated schema — customer, description, amount, and date fields are maintained in two places.
+Broken audit trail — InsertedBy (who added the order) lives only on the orders row. Once the row is deleted and copied to sales, that information is lost unless recovered via a join against a soft-deleted row — fragile, and breaks entirely if soft-deleted rows are ever purged.
+Split reporting — any report spanning both pending and completed orders (e.g. "total order volume this month") requires a UNION across two tables with different primary keys (PONumber vs RefPO).
+No native history — the current value of Status is the only record of the order's lifecycle; there's no way to see when it moved from Pending → Delivered without inferring from UpdatedAt.
+
+
+2. Proposed Design
+
+Use one orders table representing the full lifecycle of an order, from creation through delivery through payment. "Sales" is not a separate entity — it's just an order in the Delivered (or Paid) status.
+
+2.1 Schema
+
+gotype Order struct {
+    ID          uint       `gorm:"primaryKey" json:"id"`
+    PONumber    uint64     `gorm:"uniqueIndex;not null" json:"poNumber"`
+    InvoiceID   *string    `gorm:"uniqueIndex;type:varchar(100)" json:"invoiceId,omitempty"`
+
+    Customer    string     `gorm:"type:varchar(255);not null" json:"customer"`
+    ShipTo      string     `gorm:"type:varchar(255)" json:"shipTo"`
+    Description string     `gorm:"type:text" json:"description"`
+    Quantity    int        `gorm:"type:integer;not null;default:1" json:"quantity"`
+    Cost        float64    `gorm:"type:decimal(12,2);not null" json:"cost"`
+    TotalCost   float64    `gorm:"type:decimal(12,2);not null" json:"totalCost"`
+
+    Status      string     `gorm:"type:varchar(50);not null;default:'Pending'" json:"status"`
+    // Pending -> Confirmed -> Delivered -> Paid, or Cancelled at any point before Delivered
+
+    OrderDate   time.Time  `gorm:"type:date;not null" json:"orderDate"`
+    CancelDate  *time.Time `gorm:"type:date" json:"cancelDate,omitempty"`
+    DeliveredAt *time.Time `json:"deliveredAt,omitempty"`
+    PaidAt      *time.Time `json:"paidAt,omitempty"`
+
+    InsertedBy  string     `gorm:"type:varchar(255);not null" json:"insertedBy"`
+    DeliveredBy *string    `gorm:"type:varchar(255)" json:"deliveredBy,omitempty"`
+
+    CreatedAt   time.Time  `json:"createdAt"`
+    UpdatedAt   time.Time  `json:"updatedAt"`
+    DeletedAt   *time.Time `gorm:"index" json:"deletedAt,omitempty"`
+}
+
+Both InsertedBy and DeliveredBy live permanently on the same row — no join, no risk of losing the "who added it" record once delivery happens.
+
+3. Delivery Flow (Before vs After)
+
+Before: PUT /api/orders/:id/status with status=Delivered triggers an ACID transaction that reads the order, inserts into sales, deletes from orders. Requires a transaction because two tables and two operations must succeed or fail together.
+
+After: PUT /api/orders/:id/status with status=Delivered runs:

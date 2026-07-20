@@ -3,12 +3,14 @@
 	import { goto } from '$app/navigation';
 	import { auth, googleProvider } from '$lib/firebase';
 	import { createUserWithEmailAndPassword, updateProfile, signInWithPopup } from 'firebase/auth';
+	import { authState } from '$lib/auth.svelte';
 
 	// --- Form State using Svelte 5 Runes ---
 	let fullName = $state('');
 	let email = $state('');
 	let password = $state('');
 	let confirmPassword = $state('');
+	let role = $state('Employee');
 	let showPassword = $state(false);
 	let showConfirmPassword = $state(false);
 	let isSubmitting = $state(false);
@@ -40,10 +42,14 @@
 				body: JSON.stringify({
 					name: name || firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
 					email: firebaseUser.email || '',
-					firebase_uid: firebaseUser.uid
+					firebase_uid: firebaseUser.uid,
+					role: role
 				})
 			});
-			if (!response.ok) {
+			if (response.ok) {
+				const userProfile = await response.json();
+				authState.profile = userProfile;
+			} else {
 				console.error('Failed to sync user with backend:', await response.text());
 			}
 		} catch (err) {
@@ -73,7 +79,7 @@
 			const userCredential = await createUserWithEmailAndPassword(activeAuth, email, password);
 			await updateProfile(userCredential.user, { displayName: fullName });
 			await syncUserWithBackend(userCredential.user, fullName);
-			await goto(resolve('/sales'));
+			await goto(resolve('/company'));
 		} catch (err) {
 			errorMessage = err instanceof Error ? err.message : 'Could not create account.';
 		} finally {
@@ -94,11 +100,8 @@
 		);
 		try {
 			const userCredential = await signInWithPopup(activeAuth, activeProvider);
-			await syncUserWithBackend(
-				userCredential.user,
-				userCredential.user.displayName || undefined
-			);
-			await goto(resolve('/sales'));
+			await syncUserWithBackend(userCredential.user, userCredential.user.displayName || undefined);
+			await goto(resolve('/company'));
 		} catch (err) {
 			errorMessage = err instanceof Error ? err.message : 'Google authentication failed.';
 		}
@@ -162,6 +165,39 @@
 			{/if}
 
 			<form onsubmit={handleSubmit} class="space-y-md">
+				<!-- Role Based Access Control Selection -->
+				<div class="flex flex-col gap-xs">
+					<label class="font-label-md text-label-md text-on-surface-variant">
+						Sign up as:
+					</label>
+					<div class="grid grid-cols-2 gap-sm">
+						<button
+							type="button"
+							onclick={() => (role = 'Owner')}
+							class="flex cursor-pointer flex-col items-center justify-center rounded-lg border p-sm text-center transition-all {role ===
+							'Owner'
+								? 'border-primary bg-primary/10 font-semibold text-primary ring-2 ring-primary/30'
+								: 'border-outline-variant bg-surface-container-low/40 text-on-surface-variant hover:bg-surface-dim'}"
+						>
+							<span class="text-lg">👑</span>
+							<span class="font-label-md mt-1 text-xs font-bold">Owner</span>
+							<span class="text-[10px] text-stone-500">Full System & Finance Access</span>
+						</button>
+						<button
+							type="button"
+							onclick={() => (role = 'Employee')}
+							class="flex cursor-pointer flex-col items-center justify-center rounded-lg border p-sm text-center transition-all {role ===
+							'Employee'
+								? 'border-primary bg-primary/10 font-semibold text-primary ring-2 ring-primary/30'
+								: 'border-outline-variant bg-surface-container-low/40 text-on-surface-variant hover:bg-surface-dim'}"
+						>
+							<span class="text-lg">💼</span>
+							<span class="font-label-md mt-1 text-xs font-bold">Employee</span>
+							<span class="text-[10px] text-stone-500">Orders & Registry Access</span>
+						</button>
+					</div>
+				</div>
+
 				<!-- Full Name -->
 				<div class="flex flex-col gap-xs">
 					<label

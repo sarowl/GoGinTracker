@@ -16,7 +16,7 @@
 			if (!authState.isLoggedIn && !path.startsWith('/auth')) {
 				goto('/auth/login');
 			} else if (authState.isLoggedIn && path.startsWith('/auth')) {
-				goto('/sales');
+				goto('/dashboard');
 			}
 		}
 	});

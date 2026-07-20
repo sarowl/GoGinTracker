@@ -7,8 +7,13 @@
 	let isModalOpen = $state(false);
 
 	// Derived statistics
-	let totalOrdersValue = $derived(sharedStore.orders.reduce((sum, order) => sum + order.totalCost, 0));
-	let activeCount = $derived(sharedStore.orders.filter((o) => o.status !== 'Cancelled').length);
+	let ordersList = $derived(
+		sharedStore.orders.filter((o) => o.status !== 'Delivered')
+	);
+	let totalOrdersValue = $derived(
+		ordersList.reduce((sum, order) => sum + order.totalCost, 0)
+	);
+	let activeCount = $derived(ordersList.filter((o) => o.status === 'Pending').length);
 	let poSuggestion = $derived(20260000 + sharedStore.orders.length + 1);
 
 	function openAddModal() {
@@ -35,7 +40,34 @@
 	 * @param {string} id
 	 */
 	function removeOrder(id) {
-		sharedStore.removeOrder(id);
+		if (!authState.isOwner) {
+			alert('Employees are not permitted to delete orders.');
+			return;
+		}
+		sharedStore.removeOrder(id, authState.role);
+	}
+
+	/**
+	 * @param {any} order
+	 * @param {HTMLSelectElement} [selectEl]
+	 */
+	async function triggerDeliver(order, selectEl) {
+		const userUid = authState.user?.uid || '';
+		const invoiceId = prompt(`Please enter the Sales Invoice ID for PO #${order.poNumber}:`);
+
+		if (invoiceId === null) {
+			if (selectEl) selectEl.value = order.status;
+			return;
+		}
+
+		const trimmedId = invoiceId.trim();
+		if (trimmedId === '') {
+			alert('Sales Invoice ID is required to mark the order as Delivered.');
+			if (selectEl) selectEl.value = order.status;
+			return;
+		}
+
+		await sharedStore.updateOrderStatus(order.id, 'Delivered', trimmedId, userUid, authState.role);
 	}
 
 	/**
@@ -44,28 +76,12 @@
 	 */
 	async function handleStatusChange(order, event) {
 		const newStatus = event.currentTarget.value;
-		const oldStatus = order.status;
 		const userUid = authState.user?.uid || '';
 
 		if (newStatus === 'Delivered') {
-			const invoiceId = prompt(`Please enter the Sales Invoice ID for PO #${order.poNumber}:`);
-			
-			// User clicked cancel
-			if (invoiceId === null) {
-				event.currentTarget.value = oldStatus;
-				return;
-			}
-
-			const trimmedId = invoiceId.trim();
-			if (trimmedId === '') {
-				alert("Sales Invoice ID is required to mark the order as Delivered.");
-				event.currentTarget.value = oldStatus;
-				return;
-			}
-
-			await sharedStore.updateOrderStatus(order.id, 'Delivered', trimmedId, userUid);
+			await triggerDeliver(order, event.currentTarget);
 		} else {
-			await sharedStore.updateOrderStatus(order.id, newStatus, undefined, userUid);
+			await sharedStore.updateOrderStatus(order.id, newStatus, undefined, userUid, authState.role);
 		}
 	}
 </script>
@@ -143,8 +159,8 @@
 					Average Order Value
 				</p>
 				<p class="font-headline-lg text-headline-lg tracking-tight text-primary">
-					₱{sharedStore.orders.length
-						? (totalOrdersValue / sharedStore.orders.length).toLocaleString('en-US', {
+					₱{ordersList.length
+						? (totalOrdersValue / ordersList.length).toLocaleString('en-US', {
 								minimumFractionDigits: 2,
 								maximumFractionDigits: 2
 							})
@@ -163,111 +179,139 @@
 					<thead>
 						<tr class="border-b border-outline-variant bg-surface-dim">
 							<th
-								class="p-md font-label-md text-label-md tracking-wider text-on-surface-variant uppercase whitespace-nowrap min-w-25"
+								class="p-md min-w-25 font-label-md text-label-md tracking-wider whitespace-nowrap text-on-surface-variant uppercase"
 								>PO Number</th
 							>
 							<th
-								class="p-md font-label-md text-label-md tracking-wider text-on-surface-variant uppercase whitespace-nowrap min-w-[180px]"
+								class="p-md min-w-[180px] font-label-md text-label-md tracking-wider whitespace-nowrap text-on-surface-variant uppercase"
 								>Ship To</th
 							>
 							<th
-								class="p-md font-label-md text-label-md tracking-wider text-on-surface-variant uppercase whitespace-nowrap min-w-[240px]"
+								class="p-md min-w-[240px] font-label-md text-label-md tracking-wider whitespace-nowrap text-on-surface-variant uppercase"
 								>Description</th
 							>
 							<th
-								class="p-md text-right font-label-md text-label-md tracking-wider text-on-surface-variant uppercase whitespace-nowrap min-w-[100px]"
+								class="p-md min-w-[100px] text-right font-label-md text-label-md tracking-wider whitespace-nowrap text-on-surface-variant uppercase"
 								>Quantity</th
 							>
 							<th
-								class="p-md text-right font-label-md text-label-md tracking-wider text-on-surface-variant uppercase whitespace-nowrap min-w-[120px]"
+								class="p-md min-w-[120px] text-right font-label-md text-label-md tracking-wider whitespace-nowrap text-on-surface-variant uppercase"
 								>Unit Cost</th
 							>
 							<th
-								class="p-md pr-16 text-right font-label-md text-label-md tracking-wider text-on-surface-variant uppercase whitespace-nowrap min-w-[260px]"
+								class="p-md min-w-[260px] pr-16 text-right font-label-md text-label-md tracking-wider whitespace-nowrap text-on-surface-variant uppercase"
 								>Total Cost</th
 							>
 							<th
-								class="p-md pl-8 font-label-md text-label-md tracking-wider text-on-surface-variant uppercase whitespace-nowrap min-w-[200px]"
+								class="p-md min-w-[200px] pl-8 font-label-md text-label-md tracking-wider whitespace-nowrap text-on-surface-variant uppercase"
 								>Cancel Date</th
 							>
 							<th
-								class="p-md font-label-md text-label-md tracking-wider text-on-surface-variant uppercase whitespace-nowrap min-w-[120px]"
+								class="p-md min-w-[120px] font-label-md text-label-md tracking-wider whitespace-nowrap text-on-surface-variant uppercase"
 								>Status</th
 							>
 							<th
-								class="p-md text-center font-label-md text-label-md tracking-wider text-on-surface-variant uppercase whitespace-nowrap min-w-[100px]"
+								class="p-md min-w-[100px] text-center font-label-md text-label-md tracking-wider whitespace-nowrap text-on-surface-variant uppercase"
 								>Actions</th
 							>
 						</tr>
 					</thead>
 					<tbody class="divide-y divide-outline-variant bg-surface/50">
-						{#if sharedStore.orders.length === 0}
+						{#if ordersList.length === 0}
 							<tr>
-								<td colspan="9" class="p-xl text-center font-body-md text-on-surface-variant whitespace-nowrap">
-									No orders registered yet. Click "Add Orders" above to log your first transaction.
+								<td
+									colspan="9"
+									class="p-xl text-center font-body-md whitespace-nowrap text-on-surface-variant"
+								>
+									No active or pending orders. Click "Add Orders" above to log your first transaction.
 								</td>
 							</tr>
 						{:else}
-							{#each sharedStore.orders as order (order.id)}
+							{#each ordersList as order (order.id)}
 								<tr class="transition-colors hover:bg-surface-dim/40">
-									<td class="p-md font-body-md text-sm font-semibold text-primary whitespace-nowrap"
+									<td class="p-md font-body-md text-sm font-semibold whitespace-nowrap text-primary"
 										>{order.poNumber}</td
 									>
-									<td class="p-md font-body-md text-sm text-on-surface whitespace-nowrap">{order.shipTo}</td>
+									<td class="p-md font-body-md text-sm whitespace-nowrap text-on-surface"
+										>{order.shipTo}</td
+									>
 									<td
 										class="p-md max-w-[240px] truncate font-body-md text-sm text-on-surface-variant"
 										title={order.description}>{order.description}</td
 									>
-									<td class="p-md text-right font-body-md text-sm whitespace-nowrap">{order.quantity}</td>
-									<td class="p-md text-right font-body-md text-sm whitespace-nowrap">₱{order.cost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-									<td class="p-md pr-16 text-right font-body-md text-sm font-semibold whitespace-nowrap"
-										>₱{order.totalCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td
+									<td class="p-md text-right font-body-md text-sm whitespace-nowrap"
+										>{order.quantity}</td
 									>
-									<td class="p-md pl-8 font-body-md text-sm text-on-surface-variant whitespace-nowrap"
+									<td class="p-md text-right font-body-md text-sm whitespace-nowrap"
+										>₱{order.cost.toLocaleString('en-US', {
+											minimumFractionDigits: 2,
+											maximumFractionDigits: 2
+										})}</td
+									>
+									<td
+										class="p-md pr-16 text-right font-body-md text-sm font-semibold whitespace-nowrap"
+										>₱{order.totalCost.toLocaleString('en-US', {
+											minimumFractionDigits: 2,
+											maximumFractionDigits: 2
+										})}</td
+									>
+									<td
+										class="p-md pl-8 font-body-md text-sm whitespace-nowrap text-on-surface-variant"
 										>{order.cancelDate}</td
 									>
 									<td class="p-md font-body-md text-sm whitespace-nowrap">
-										{#if order.cancelDate && order.cancelDate !== 'N/A' && order.cancelDate < new Date().toISOString().split('T')[0]}
-											<span class="inline-flex items-center rounded-full border border-red-100 bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-800">
-												Cancelled (Expired)
-											</span>
-										{:else}
-											<select
-												value={order.status}
-												onchange={(e) => handleStatusChange(order, e)}
-												class="cursor-pointer rounded border border-outline-variant bg-surface-container-low/40 px-2.5 py-1 font-body-md text-xs font-semibold focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 transition-all {
-													order.status === 'Pending' 
-														? 'text-stone-600 border-stone-200' 
-														: 'text-red-700 bg-red-50/20 border-red-200'
-												}"
-											>
-												<option value="Pending">Pending</option>
-												<option value="Cancelled">Cancelled</option>
-												<option value="Delivered">Delivered</option>
-											</select>
-										{/if}
+										<select
+											value={order.cancelDate &&
+											order.cancelDate !== 'N/A' &&
+											order.cancelDate < new Date().toISOString().split('T')[0] &&
+											order.status === 'Pending'
+												? 'Expired'
+												: order.status}
+											onchange={(e) => handleStatusChange(order, e)}
+											class="cursor-pointer rounded border border-outline-variant bg-surface-container-low/40 px-2.5 py-1 font-body-md text-xs font-semibold transition-all focus:border-primary focus:ring-1 focus:ring-primary/30 focus:outline-none {order.status ===
+												'Expired' ||
+											(order.cancelDate &&
+												order.cancelDate !== 'N/A' &&
+												order.cancelDate < new Date().toISOString().split('T')[0])
+												? 'border-red-200 bg-red-50/20 text-red-700'
+												: 'border-stone-200 text-stone-600'}"
+										>
+											<option value="Pending">Pending</option>
+											<option value="Expired">Expired</option>
+											<option value="Delivered">Delivered</option>
+										</select>
 									</td>
 									<td class="p-md text-center whitespace-nowrap">
-										<button
-											onclick={() => removeOrder(order.id)}
-											class="cursor-pointer inline-flex items-center justify-center p-1.5 rounded-full hover:bg-red-50 text-red-600 hover:text-red-800 transition-all"
-											aria-label="Delete order"
-										>
-											<svg
-												class="h-4.5 w-4.5"
-												fill="none"
-												stroke="currentColor"
-												stroke-width="2"
-												viewBox="0 0 24 24"
-												xmlns="http://www.w3.org/2000/svg"
+										{#if authState.isOwner}
+											<button
+												onclick={() => removeOrder(order.id)}
+												class="inline-flex cursor-pointer items-center justify-center rounded-full p-1.5 text-red-600 transition-all hover:bg-red-50 hover:text-red-800"
+												aria-label="Delete order"
+												title="Delete order"
 											>
-												<path
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-												/>
-											</svg>
-										</button>
+												<svg
+													class="h-4.5 w-4.5"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+													viewBox="0 0 24 24"
+													xmlns="http://www.w3.org/2000/svg"
+												>
+													<path
+														stroke-linecap="round"
+														stroke-linejoin="round"
+														d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+													/>
+												</svg>
+											</button>
+										{:else}
+											<span
+												class="inline-flex items-center gap-1 text-xs font-medium text-stone-400"
+												title="Only Owners can delete orders"
+											>
+												
+											</span>
+										{/if}
 									</td>
 								</tr>
 							{/each}
@@ -280,9 +324,5 @@
 </div>
 
 {#if isModalOpen}
-	<OrderModal
-		poSuggestion={poSuggestion}
-		onClose={closeAddModal}
-		onAddOrder={handleAddOrder}
-	/>
+	<OrderModal {poSuggestion} onClose={closeAddModal} onAddOrder={handleAddOrder} />
 {/if}

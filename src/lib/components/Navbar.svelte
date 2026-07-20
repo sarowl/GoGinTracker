@@ -47,6 +47,16 @@
 			{#if isLoggedIn}
 				<div class="hidden h-full items-center gap-6 md:flex" transition:fade={{ duration: 150 }}>
 					<a
+						href="/dashboard"
+						class="relative flex h-16 items-center px-1 font-body-md text-sm font-medium transition-all duration-200 hover:text-primary {activeTab ===
+						'dashboard'
+							? 'border-b-2 border-primary text-primary'
+							: 'text-on-surface-variant'}"
+					>
+						Dashboard
+					</a>
+
+					<a
 						href="/sales"
 						class="relative flex h-16 items-center px-1 font-body-md text-sm font-medium transition-all duration-200 hover:text-primary {activeTab ===
 						'sales'
@@ -113,33 +123,32 @@
 					{#if isDropdownOpen}
 						<div
 							transition:fade={{ duration: 150 }}
-							class="absolute right-0 z-50 mt-2 w-48 rounded-lg border border-outline-variant bg-surface p-1 shadow-lg backdrop-blur-md"
+							class="absolute right-0 z-50 mt-2 w-52 rounded-lg border border-outline-variant bg-surface p-2 shadow-lg backdrop-blur-md"
 						>
+							<div class="border-b border-outline-variant px-3 py-2 text-xs">
+								<p class="font-bold text-on-surface truncate">{authState.user?.displayName || authState.user?.email}</p>
+								<div class="mt-1 flex items-center gap-1.5">
+									<span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider {authState.isOwner ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-blue-100 text-blue-900 border border-blue-300'}">
+										{authState.isOwner ? '👑 Owner' : '💼 Employee'}
+									</span>
+									{#if authState.profile?.company_code}
+										<span class="text-[10px] font-mono text-stone-500">({authState.profile.company_code})</span>
+									{/if}
+								</div>
+							</div>
+							<a
+								href="/company"
+								class="mt-1 flex items-center gap-2 rounded px-3 py-2 text-sm font-medium text-on-surface transition-colors duration-150 hover:bg-surface-dim"
+								onclick={closeDropdown}
+							>
+								🏢 Company Setup
+							</a>
 							<a
 								href="/settings"
 								class="flex items-center gap-2 rounded px-3 py-2 text-sm font-medium text-on-surface transition-colors duration-150 hover:bg-surface-dim"
 								onclick={closeDropdown}
 							>
-								<!-- Settings Icon -->
-								<svg
-									class="h-4 w-4 opacity-75"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="2"
-									viewBox="0 0 24 24"
-								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-									/>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-									/>
-								</svg>
-								Settings
+								⚙️ Settings
 							</a>
 							<button
 								type="button"
